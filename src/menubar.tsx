@@ -1,6 +1,10 @@
 import { Icon, MenuBarExtra, openCommandPreferences } from "@raycast/api";
 import { useState, useEffect } from "react";
-import { ensureDaemonRunning, isWatcherPaused, setWatcherPaused } from "./utils";
+import {
+  ensureDaemonRunning,
+  isWatcherPaused,
+  setWatcherPaused,
+} from "./utils";
 
 export default function Command() {
   const [paused, setPaused] = useState<boolean>(isWatcherPaused());
@@ -28,7 +32,9 @@ export default function Command() {
     >
       <MenuBarExtra.Section title="Status">
         <MenuBarExtra.Item
-          title={paused ? "Status: Paused (Manual)" : "Status: Active (Rayglott)"}
+          title={
+            paused ? "Status: Paused (Manual)" : "Status: Active (Rayglott)"
+          }
           icon={paused ? Icon.XMarkCircle : Icon.CheckCircle}
         />
       </MenuBarExtra.Section>

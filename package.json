@@ -4,14 +4,10 @@
   "title": "Rayglott",
   "description": "Automatically switches keyboard to ABC when Raycast opens and restores Persian when closed.",
   "icon": "rayglott-icon.png",
-  "owner": "hosseinsamooni",
-  "author": "hosseinsamooni",
+  "author": "hossein_samani",
   "license": "MIT",
   "categories": ["Productivity", "System"],
   "keywords": ["keyboard", "layout", "input source", "persian", "abc", "language", "switcher", "farsi"],
-  "contributors": [
-    "hosseinsamooni"
-  ],
   "commands": [
     {
       "name": "toggle",
