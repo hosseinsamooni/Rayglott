@@ -1,0 +1,10 @@
+node_modules/
+.DS_Store
+*.xcuserstate
+xcuserdata/
+dist/
+.raycast/
+build/
+*.log
+.env
+.env.*

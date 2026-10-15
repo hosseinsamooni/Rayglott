@@ -1,0 +1,44 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "rayglott",
+  "title": "Rayglott",
+  "description": "Automatically switches keyboard to ABC when Raycast opens and restores Persian when closed.",
+  "icon": "rayglott-icon.png",
+  "author": "hosseinsamani",
+  "categories": ["Productivity", "System"],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "toggle",
+      "title": "Toggle Rayglott",
+      "description": "Enable or disable automatic ABC language switching for Raycast",
+      "mode": "no-view"
+    },
+    {
+      "name": "menubar",
+      "title": "Rayglott Menu Bar",
+      "description": "Show status and toggle Rayglott from the macOS Menu Bar",
+      "mode": "menu-bar",
+      "interval": "10s"
+    }
+  ],
+  "scripts": {
+    "build": "ray build -e dist",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix",
+    "lint": "ray lint"
+  },
+  "dependencies": {
+    "@raycast/api": "^1.83.0"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^1.0.11",
+    "@types/node": "20.x",
+    "@types/react": "18.3.3",
+    "eslint": "^8.57.0",
+    "typescript": "^5.5.4"
+  },
+  "overrides": {
+    "@types/react": "18.3.3"
+  }
+}
