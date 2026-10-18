@@ -1,15 +1,19 @@
 import { Icon, MenuBarExtra, openCommandPreferences } from "@raycast/api";
 import { useState, useEffect } from "react";
 import { ensureDaemonRunning } from "./daemon";
-import { isWatcherPaused, setWatcherPaused } from "./pause";
+import { isWatcherPaused, setWatcherPaused, readState } from "./pause";
 
 export default function Command() {
   const [paused, setPaused] = useState<boolean>(isWatcherPaused());
+  const [lastError, setLastError] = useState<string | null>(
+    readState().lastError,
+  );
 
   useEffect(() => {
     try {
       ensureDaemonRunning();
       setPaused(isWatcherPaused());
+      setLastError(readState().lastError);
     } catch (e) {
       console.error(e);
     }
@@ -34,6 +38,9 @@ export default function Command() {
           }
           icon={paused ? Icon.XMarkCircle : Icon.CheckCircle}
         />
+        {lastError ? (
+          <MenuBarExtra.Item title={lastError} icon={Icon.Warning} />
+        ) : null}
       </MenuBarExtra.Section>
 
       <MenuBarExtra.Section>

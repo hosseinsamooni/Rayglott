@@ -5,12 +5,12 @@ export default async function Command() {
   try {
     const isActive = toggleWatcher();
     if (isActive) {
-      await showHUD("🟢 Raycast Rayglott: Enabled");
+      await showHUD("Rayglott: Enabled");
     } else {
-      await showHUD("⏸️ Raycast Rayglott: Paused");
+      await showHUD("Rayglott: Paused");
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    await showHUD(`❌ ${message}`);
+    await showHUD(`Rayglott: ${message}`);
   }
 }
