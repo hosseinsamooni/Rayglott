@@ -1,10 +1,7 @@
 import { Icon, MenuBarExtra, openCommandPreferences } from "@raycast/api";
 import { useState, useEffect } from "react";
-import {
-  ensureDaemonRunning,
-  isWatcherPaused,
-  setWatcherPaused,
-} from "./utils";
+import { ensureDaemonRunning } from "./daemon";
+import { isWatcherPaused, setWatcherPaused } from "./pause";
 
 export default function Command() {
   const [paused, setPaused] = useState<boolean>(isWatcherPaused());

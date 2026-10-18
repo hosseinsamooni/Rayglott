@@ -1,5 +1,5 @@
 import { showHUD } from "@raycast/api";
-import { toggleWatcher } from "./utils";
+import { toggleWatcher } from "./pause";
 
 export default async function Command() {
   try {
