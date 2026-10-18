@@ -1,18 +1,19 @@
 import { Icon, MenuBarExtra, openCommandPreferences } from "@raycast/api";
 import { useState, useEffect } from "react";
-import {
-  ensureDaemonRunning,
-  isWatcherPaused,
-  setWatcherPaused,
-} from "./utils";
+import { ensureDaemonRunning } from "./daemon";
+import { isWatcherPaused, setWatcherPaused, readState } from "./pause";
 
 export default function Command() {
   const [paused, setPaused] = useState<boolean>(isWatcherPaused());
+  const [lastError, setLastError] = useState<string | null>(
+    readState().lastError,
+  );
 
   useEffect(() => {
     try {
       ensureDaemonRunning();
       setPaused(isWatcherPaused());
+      setLastError(readState().lastError);
     } catch (e) {
       console.error(e);
     }
@@ -26,7 +27,7 @@ export default function Command() {
 
   return (
     <MenuBarExtra
-      icon={paused ? Icon.Pause : Icon.Keyboard}
+      icon={paused ? "A-solid-paused.png" : "A-solid-active.png"}
       title={paused ? "FA/EN" : "ABC"}
       tooltip="Raycast Rayglott Switcher"
     >
@@ -37,6 +38,9 @@ export default function Command() {
           }
           icon={paused ? Icon.XMarkCircle : Icon.CheckCircle}
         />
+        {lastError ? (
+          <MenuBarExtra.Item title={lastError} icon={Icon.Warning} />
+        ) : null}
       </MenuBarExtra.Section>
 
       <MenuBarExtra.Section>
