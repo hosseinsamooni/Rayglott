@@ -8,13 +8,38 @@ const PAUSE_FILE = path.join(os.homedir(), ".raycast_auto_abc_paused");
 const BINARY_PATH = path.join(environment.supportPath, "raycast-abc-watcher");
 const SWIFT_SOURCE = path.join(environment.assetsPath, "watcher.swift");
 
+export class XcodeCLTMissingError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "XcodeCLTMissingError";
+  }
+}
+
+export function preflightXcodeCLT(): void {
+  try {
+    execSync("xcode-select -p", { stdio: "ignore" });
+  } catch {
+    throw new XcodeCLTMissingError(
+      "Xcode Command Line Tools not found. Run `xcode-select --install`.",
+    );
+  }
+  try {
+    execSync("which swiftc", { stdio: "ignore" });
+  } catch {
+    throw new XcodeCLTMissingError(
+      "swiftc not found. Install Xcode Command Line Tools: `xcode-select --install`.",
+    );
+  }
+}
+
 export function ensureDaemonRunning(): void {
   if (!fs.existsSync(environment.supportPath)) {
     fs.mkdirSync(environment.supportPath, { recursive: true });
   }
 
-  // کامپایل فایل Swift در اولین اجرا
+  // پیش‌بررسی Xcode Command Line Tools / swiftc قبل از کامپایل
   if (!fs.existsSync(BINARY_PATH)) {
+    preflightXcodeCLT();
     execSync(`swiftc -O "${SWIFT_SOURCE}" -o "${BINARY_PATH}"`);
   }
 

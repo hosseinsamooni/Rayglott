@@ -10,8 +10,7 @@ export default async function Command() {
       await showHUD("⏸️ Raycast Rayglott: Paused");
     }
   } catch (error) {
-    await showHUD(
-      "❌ Failed to toggle Watcher (Check Xcode Command Line Tools)",
-    );
+    const message = error instanceof Error ? error.message : String(error);
+    await showHUD(`❌ ${message}`);
   }
 }
