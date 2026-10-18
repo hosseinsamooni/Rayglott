@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-
+import os from "os";
 import path from "path";
 import fs from "fs";
 import { execSync, spawn } from "child_process";
@@ -23,6 +23,9 @@ const SUPPORT = environment.supportPath;
 const ASSETS = environment.assetsPath;
 const BINARY = path.join(SUPPORT, "raycast-abc-watcher");
 const SWIFT_SRC = path.join(ASSETS, "watcher.swift");
+const STATE_DIR = path.join(os.homedir(), ".rayglott");
+const STATE_FILE = path.join(STATE_DIR, "state.json");
+const LEGACY_PAUSE_FILE = path.join(os.homedir(), ".raycast_auto_abc_paused");
 
 const mockedFs = vi.mocked(fs);
 const mockedExecSync = vi.mocked(execSync);
@@ -48,14 +51,14 @@ function execSyncBehavior(mode: "running" | "not-running"): void {
 beforeEach(() => {
   vi.clearAllMocks();
   mockedFs.existsSync.mockReturnValue(false);
+  mockedFs.readFileSync.mockReturnValue("{}");
   mockedSpawn.mockReturnValue({ unref: vi.fn() } as unknown as ReturnType<
     typeof spawn
   >);
   execSyncBehavior("running");
-  mockedFs.readFileSync.mockReturnValue("{}");
 });
 
-describe("daemon.ensureDaemonRunning", () => {
+describe("daemon", () => {
   it("creates the support directory when it is missing", () => {
     existingPaths(BINARY);
     daemon.ensureDaemonRunning();
@@ -88,24 +91,115 @@ describe("daemon.ensureDaemonRunning", () => {
     daemon.ensureDaemonRunning();
     expect(mockedSpawn).not.toHaveBeenCalled();
   });
+
+  it("throws XcodeCLTMissingError when xcode-select is missing", () => {
+    mockedExecSync.mockImplementation((cmd: unknown) => {
+      if (String(cmd).includes("xcode-select")) {
+        throw new Error("missing");
+      }
+      return Buffer.from("");
+    });
+    expect(() => daemon.preflightXcodeCLT()).toThrow(
+      daemon.XcodeCLTMissingError,
+    );
+  });
+
+  it("reports daemon running state from pgrep", () => {
+    execSyncBehavior("running");
+    expect(daemon.isDaemonRunning()).toBe(true);
+    execSyncBehavior("not-running");
+    expect(daemon.isDaemonRunning()).toBe(false);
+  });
 });
 
-describe("state.readState", () => {
-  it("returns defaults when state file is missing", () => {
+describe("state", () => {
+  it("returns defaults when the state file is missing", () => {
     existingPaths();
     const s = state.readState();
     expect(s.schemaVersion).toBe(1);
     expect(s.paused).toBe(false);
   });
+
+  it("reads paused from an existing state file", () => {
+    existingPaths(STATE_FILE);
+    mockedFs.readFileSync.mockReturnValue(
+      JSON.stringify({ schemaVersion: 1, paused: true }),
+    );
+    const s = state.readState();
+    expect(s.paused).toBe(true);
+  });
+
+  it("recovers a corrupt state file", () => {
+    existingPaths(STATE_FILE);
+    mockedFs.readFileSync.mockReturnValue("{bad");
+    const s = state.readState();
+    expect(s.paused).toBe(false);
+    expect(s.lastError).toBe("State file recovered after corruption.");
+  });
+
+  it("recovers a schema mismatch preserving paused", () => {
+    existingPaths(STATE_FILE);
+    mockedFs.readFileSync.mockReturnValue(
+      JSON.stringify({ schemaVersion: 99, paused: true }),
+    );
+    const s = state.readState();
+    expect(s.paused).toBe(true);
+    expect(s.lastError).toBe("State file recovered after schema mismatch.");
+  });
+
+  it("migrates the legacy pause marker", () => {
+    existingPaths(LEGACY_PAUSE_FILE);
+    const s = state.readState();
+    expect(s.paused).toBe(true);
+    expect(mockedFs.unlinkSync).toHaveBeenCalledWith(LEGACY_PAUSE_FILE);
+  });
+
+  it("writes state atomically", () => {
+    existingPaths();
+    state.setPaused(true);
+    expect(mockedFs.renameSync).toHaveBeenCalledWith(
+      `${STATE_FILE}.tmp`,
+      STATE_FILE,
+    );
+  });
 });
 
-describe("pause.toggleWatcher", () => {
+describe("pause", () => {
+  it("reflects paused state", () => {
+    existingPaths(STATE_FILE);
+    mockedFs.readFileSync.mockReturnValue(
+      JSON.stringify({ schemaVersion: 1, paused: true }),
+    );
+    expect(pause.isWatcherPaused()).toBe(true);
+  });
+
+  it("ensures the daemon is running before mutating state", () => {
+    existingPaths(SUPPORT, BINARY, STATE_FILE);
+    execSyncBehavior("not-running");
+    mockedFs.readFileSync.mockReturnValue(
+      JSON.stringify({ schemaVersion: 1, paused: false }),
+    );
+    pause.setWatcherPaused(true);
+    expect(mockedSpawn).toHaveBeenCalled();
+  });
+
   it("pauses when currently active and returns false", () => {
-    existingPaths(SUPPORT, BINARY);
+    existingPaths(SUPPORT, BINARY, STATE_FILE);
+    execSyncBehavior("running");
     mockedFs.readFileSync.mockReturnValue(
       JSON.stringify({ schemaVersion: 1, paused: false }),
     );
     const result = pause.toggleWatcher();
     expect(result).toBe(false);
+  });
+
+  it("resumes when currently paused and returns true", () => {
+    existingPaths(SUPPORT, BINARY, STATE_FILE);
+    execSyncBehavior("running");
+    mockedFs.readFileSync.mockReturnValue(
+      JSON.stringify({ schemaVersion: 1, paused: true }),
+    );
+    const result = pause.toggleWatcher();
+    expect(result).toBe(true);
   });
 });
