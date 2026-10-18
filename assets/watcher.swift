@@ -1,6 +1,8 @@
 import Cocoa
 import Carbon
 import CoreGraphics
+import Darwin
+import Foundation
 
 // MARK: - StateFile
 
@@ -54,25 +56,42 @@ struct RayglottState {
 enum StateFile {
     static let directory: String = ("~/.rayglott" as NSString).expandingTildeInPath
     static let path: String = (directory as NSString).appendingPathComponent("state.json")
+    static let legacyPausePath: String = ("~/.raycast_auto_abc_paused" as NSString).expandingTildeInPath
 
     static func ensureDirectory() {
         try? FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+        try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directory)
     }
 
     static func read() -> RayglottState {
         ensureDirectory()
+        // One-time migration from legacy marker file.
+        var legacyPaused = false
+        if FileManager.default.fileExists(atPath: legacyPausePath) {
+            legacyPaused = true
+            try? FileManager.default.removeItem(atPath: legacyPausePath)
+        }
+
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return RayglottState()
+            var recovered = RayglottState()
+            if legacyPaused { recovered.paused = true }
+            if FileManager.default.fileExists(atPath: path) {
+                recovered.lastError = "State file recovered after corruption."
+            }
+            return recovered
         }
         if let v = obj["schemaVersion"] as? Int, v != 1 {
             // Unknown schema: recover, preserving paused if readable.
             var recovered = RayglottState()
-            if let p = obj["paused"] as? Bool { recovered.paused = p }
+            if let p = obj["paused"] as? Bool { recovered.paused = p || legacyPaused }
+            else if legacyPaused { recovered.paused = true }
             recovered.lastError = "State file recovered after schema mismatch."
             return recovered
         }
-        return RayglottState.from(dictionary: obj)
+        var state = RayglottState.from(dictionary: obj)
+        if legacyPaused { state.paused = true }
+        return state
     }
 
     static func write(_ state: RayglottState) {
@@ -85,8 +104,31 @@ enum StateFile {
                 try? FileManager.default.removeItem(atPath: path)
             }
             try FileManager.default.moveItem(atPath: tmp, toPath: path)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: path)
         } catch {
-            // ignore
+            DaemonLog.append("state write failed: \(error)")
+        }
+    }
+}
+
+// MARK: - DaemonLog
+
+enum DaemonLog {
+    static let path: String = (("~/.rayglott" as NSString).expandingTildeInPath as NSString).appendingPathComponent("daemon.log")
+
+    static func append(_ message: String) {
+        let directory = ("~/.rayglott" as NSString).expandingTildeInPath
+        try? FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+        let formatter = ISO8601DateFormatter()
+        let line = "\(formatter.string(from: Date())) \(message)\n"
+        guard let data = line.data(using: .utf8) else { return }
+        if FileManager.default.fileExists(atPath: path),
+           let handle = FileHandle(forWritingAtPath: path) {
+            handle.seekToEndOfFile()
+            handle.write(data)
+            handle.closeFile()
+        } else {
+            try? data.write(to: URL(fileURLWithPath: path))
         }
     }
 }
@@ -154,6 +196,14 @@ class RaycastLanguageWatcher {
 
     func start() {
         StateFile.ensureDirectory()
+        // Single instance: exit if another daemon owns the pid and is alive.
+        let initialState = StateFile.read()
+        if let existingPid = initialState.daemonPid,
+           existingPid != Int(getpid()),
+           kill(Int32(existingPid), 0) == 0 {
+            exit(0)
+        }
+
         screenRecordingGranted = CGPreflightScreenCaptureAccess()
 
         // Write daemon ownership fields.
@@ -163,6 +213,11 @@ class RaycastLanguageWatcher {
         state.lastError = screenRecordingGranted ? nil : "Screen Recording permission missing. Grant in System Settings → Privacy & Security → Screen Recording, then restart."
         state.permissionScreenRecording = screenRecordingGranted
         StateFile.write(state)
+
+        if !screenRecordingGranted {
+            DaemonLog.append("screen recording permission missing")
+            CGRequestScreenCaptureAccess()
+        }
 
         if !screenRecordingGranted {
             // Prompt once (may no-op for unsigned binary).

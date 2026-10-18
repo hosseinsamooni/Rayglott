@@ -59,7 +59,14 @@ export function readState(): RayglottState {
 
   if (!fs.existsSync(STATE_FILE)) {
     const state = defaultState();
-    if (legacyPaused) state.paused = true;
+    if (legacyPaused) {
+      state.paused = true;
+      try {
+        writeState(state);
+      } catch {
+        // ignore
+      }
+    }
     return state;
   }
 
@@ -116,7 +123,14 @@ export function readState(): RayglottState {
         : {}),
     },
   };
-  if (legacyPaused) state.paused = true;
+  if (legacyPaused) {
+    state.paused = true;
+    try {
+      writeState(state);
+    } catch {
+      // ignore
+    }
+  }
   return state;
 }
 
