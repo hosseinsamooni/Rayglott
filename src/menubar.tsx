@@ -23,7 +23,7 @@ export default function Command() {
 
   return (
     <MenuBarExtra
-      icon={paused ? Icon.Pause : Icon.Keyboard}
+      icon={paused ? "A-solid-paused.png" : "A-solid-active.png"}
       title={paused ? "FA/EN" : "ABC"}
       tooltip="Raycast Rayglott Switcher"
     >
