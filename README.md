@@ -77,7 +77,7 @@ rm -f ~/Library/Application\ Support/com.raycast.macos/extensions/rayglott/rayca
 ```
 Rayglott/
 ├── assets/
-│   ├── rayglott-icon.png   # آیکون افزونه
+│   ├── rayglott-icon-v2.png # آیکون افزونه
 │   └── watcher.swift       # دیمن مانیتورینگ و سوییچ زبان
 ├── src/
 │   ├── utils.ts            # کامپایل/استارت دیمن، کنترل فایل pause
