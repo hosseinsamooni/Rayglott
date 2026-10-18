@@ -215,12 +215,8 @@ class RaycastLanguageWatcher {
         StateFile.write(state)
 
         if !screenRecordingGranted {
-            DaemonLog.append("screen recording permission missing")
-            CGRequestScreenCaptureAccess()
-        }
-
-        if !screenRecordingGranted {
             // Prompt once (may no-op for unsigned binary).
+            DaemonLog.append("screen recording permission missing")
             CGRequestScreenCaptureAccess()
         }
 
